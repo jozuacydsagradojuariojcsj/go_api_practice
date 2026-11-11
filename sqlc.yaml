@@ -1,12 +1,21 @@
 version: "2"
 cloud:
-    organization: ""
-    project: ""
-    hostname: ""
+  organization: "postgresql"
+  project: "db/queries.sql"
+  hostname: "db/migrations  "
 servers: []
 sql: []
 overrides:
-    go: null
+  go:
+    package: "db"
+    out: "internal/db"
+    sql_package: "pgx/v5"
+    overrides:
+      - db_type: "uuid"
+        go_type: "github.com/google/uuid.UUID"
+      - db_type: "uuid"
+        nullable: true
+        go_type: "github.com/google/uuid.NullUUID"
 plugins: []
 rules: []
 options: {}
