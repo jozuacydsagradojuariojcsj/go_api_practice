@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/jozuacydsagradojuariojcsj/go_api_practice/store"
+	"github.com/jozuacydsagradojuariojcsj/go_api_practice/internal/store"
 )
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) error {

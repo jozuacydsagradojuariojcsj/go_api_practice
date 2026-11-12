@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/jozuacydsagradojuariojcsj/go_api_practice/internal/api"
@@ -35,10 +37,35 @@ func main() {
   \/_____/   \/_____/      \/_/\/_/   \/_/     \/_/ `)
 
 	s := store.New(pool)
-	s := api.New(s)
+	a := api.New(s)
 
-	err := http.ListenAndServe(url, r)
-	if err != nil {
-		log.Error(err)
+	addr:= ":" + getenv("PORT", "5432")
+	srv := &http.Server{
+		Addr: addr,
+		Handler: a.Routes(),
+		ReadHeaderTimeout: 5 * time.Second,
 	}
+
+	go func(){
+		log.Printf("listening on port %s", addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed){
+			log.Fatalf("server: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("Shutting Down ...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
+	}
+}
+
+func getenv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
