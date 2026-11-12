@@ -39,16 +39,16 @@ func main() {
 	s := store.New(pool)
 	a := api.New(s)
 
-	addr:= ":" + getenv("PORT", "5432")
+	addr := ":" + getenv("PORT", "8080")
 	srv := &http.Server{
-		Addr: addr,
-		Handler: a.Routes(),
+		Addr:              addr,
+		Handler:           a.Routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	go func(){
+	go func() {
 		log.Printf("listening on port %s", addr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed){
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("server: %v", err)
 		}
 	}()

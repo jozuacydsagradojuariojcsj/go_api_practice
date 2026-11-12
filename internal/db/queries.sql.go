@@ -60,6 +60,18 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, name, email, balance, created_at FROM users WHERE id = $1
 `
@@ -75,6 +87,39 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listUserTransaction = `-- name: ListUserTransaction :many
+SELECT id, from_user_id, to_user_id, amount, created_at FROM transactions
+WHERE from_user_id =$1::uuid OR to_user_id = $1::uuid
+ORDER BY created_at DESC
+LIMIT 50
+`
+
+func (q *Queries) ListUserTransaction(ctx context.Context, userID uuid.UUID) ([]Transaction, error) {
+	rows, err := q.db.Query(ctx, listUserTransaction, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Transaction
+	for rows.Next() {
+		var i Transaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.FromUserID,
+			&i.ToUserID,
+			&i.Amount,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUsers = `-- name: ListUsers :many
@@ -159,6 +204,32 @@ func (q *Queries) RecordTransaction(ctx context.Context, arg RecordTransactionPa
 		&i.FromUserID,
 		&i.ToUserID,
 		&i.Amount,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users 
+SET name = $1, email = $2
+WHERE id = $3
+RETURNING id, name, email, balance, created_at
+`
+
+type UpdateUserParams struct {
+	Name  string
+	Email string
+	ID    uuid.UUID
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser, arg.Name, arg.Email, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Balance,
 		&i.CreatedAt,
 	)
 	return i, err

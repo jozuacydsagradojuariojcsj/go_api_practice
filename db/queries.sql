@@ -25,3 +25,18 @@ RETURNING *;
 INSERT INTO transactions (from_user_id, to_user_id, amount)
 VALUES($1, $2, $3)
 RETURNING *;
+
+-- name: UpdateUser :one
+UPDATE users 
+SET name = @name, email = @email
+WHERE id = @id
+RETURNING *;
+
+-- name: DeleteUser :execrows
+DELETE FROM users WHERE id = @id;
+
+-- name: ListUserTransaction :many
+SELECT * FROM transactions
+WHERE from_user_id =sqlc.arg(user_id)::uuid OR to_user_id = sqlc.arg(user_id)::uuid
+ORDER BY created_at DESC
+LIMIT 50;

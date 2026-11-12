@@ -22,9 +22,12 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /users", a.createUser)
 	mux.HandleFunc("GET /users", a.listUsers)
 	mux.HandleFunc("GET /users/{id}", a.getUser)
+	mux.HandleFunc("PUT /users/{id}", a.updateUser)
+	mux.HandleFunc("DELETE /users/{id}", a.deleteUser)
 
 	mux.HandleFunc("POST /users/{id}/deposit", a.deposit)
-	mux.HandleFunc("POST /transfers",a.transfer)
+	mux.HandleFunc("POST /transfers", a.transfer)
+	mux.HandleFunc("GET /users/{id}/transactions", a.listUserTransaction)
 
 	return mux
 }

@@ -4,20 +4,21 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/jozuacydsagradojuariojcsj/go_api_practice/internal/db"
 )
 
 type depositRequest struct {
-	Amount	int64 `json:"amount"`
+	Amount int64 `json:"amount"`
 }
 
 type transferRequest struct {
-	From	uuid.UUID `json:"from"`
-	To		uuid.UUID `json:"to"`
-	Amount 	int64	  `json:"amount"`
+	From   uuid.UUID `json:"from"`
+	To     uuid.UUID `json:"to"`
+	Amount int64     `json:"amount"`
 }
 
-func (a *API) deposit(w http.ResponseWriter, r *http.Request){
-	id, ok := pathUUID(w, r,"id")
+func (a *API) deposit(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -33,23 +34,40 @@ func (a *API) deposit(w http.ResponseWriter, r *http.Request){
 	}
 
 	user, err := a.store.GetUser(r.Context(), id)
-	if err != nil{
+	if err != nil {
 		writeStoreError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, user)
 }
 
-func (a *API) transfer(w http.ResponseWriter, r *http.Request){
+func (a *API) transfer(w http.ResponseWriter, r *http.Request) {
 	var req transferRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON Body")
 		return
 	}
 
-	if err := a.store.Transfer(r.Context(), req.From, req.To, req.Amount); err != nil{
+	if err := a.store.Transfer(r.Context(), req.From, req.To, req.Amount); err != nil {
 		writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status":"transfer complete"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "transfer complete"})
+}
+
+func (a *API) listUserTransaction(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathUUID(w, r, "id")
+	if !ok {
+		return
+	}
+
+	txs, err := a.store.ListUserTransaction(r.Context(), id)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	if txs == nil {
+		txs = []db.Transaction{}
+	}
+	writeJSON(w, http.StatusOK, txs)
 }
