@@ -14,6 +14,7 @@ import (
 var (
 	ErrInsufficientFunds = errors.New("Insufficient Funds")
 	ErrInvalidTransfer   = errors.New("Invalid Transfer")
+	ErrUserNotFound      = errors.New("user not found")
 )
 
 type Store struct {
