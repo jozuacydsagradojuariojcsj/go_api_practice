@@ -4,7 +4,9 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jozuacydsagradojuariojcsj/go_api_practice/internal/db"
 	"golang.org/x/crypto/bcrypt"
@@ -20,6 +22,24 @@ type userUpdateRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type userResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Balance   int64     `json:"balance"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func toUserResponse(u db.User) userResponse {
+	return userResponse{
+		ID:        u.ID,
+		Name:      u.Name,
+		Email:     u.Email,
+		Balance:   u.Balance,
+		CreatedAt: u.CreatedAt,
+	}
 }
 
 func (a *API) createUser(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +81,7 @@ func (a *API) createUser(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, user)
+	writeJSON(w, http.StatusOK, toUserResponse(user))
 }
 
 func (a *API) getUser(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +105,11 @@ func (a *API) listUsers(w http.ResponseWriter, r *http.Request) {
 	if users == nil {
 		users = []db.User{}
 	}
-	writeJSON(w, http.StatusOK, users)
+	out := make([]userResponse, 0, len(users))
+	for _, u := range users {
+		out = append(out, toUserResponse(u))
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (a *API) updateUser(w http.ResponseWriter, r *http.Request) {
@@ -111,14 +135,14 @@ func (a *API) updateUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "password must be between 8 to 72 characters")
 			return
 		}
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not update user")
-	}
+		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not update user")
+		}
 
-	h := string(hash)
-	hashPtr = &h
+		h := string(hash)
+		hashPtr = &h
+	}
 
 	user, err := a.store.UpdateUser(r.Context(), db.UpdateUserParams{
 		ID:           id,
@@ -135,7 +159,7 @@ func (a *API) updateUser(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, user)
+	writeJSON(w, http.StatusOK, toUserResponse(user))
 }
 
 func (a *API) deleteUser(w http.ResponseWriter, r *http.Request) {

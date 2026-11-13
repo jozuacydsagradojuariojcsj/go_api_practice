@@ -54,6 +54,7 @@ func (a *API) login(w http.ResponseWriter, r *http.Request) {
 
 	cmpErr := bcrypt.CompareHashAndPassword(hash, []byte(req.Password))
 	if !hasPassword || cmpErr != nil {
+		log.Printf("login error %v", cmpErr)
 		writeError(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}

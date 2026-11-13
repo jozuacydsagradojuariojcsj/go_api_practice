@@ -35,7 +35,7 @@ func (a *API) deposit(w http.ResponseWriter, r *http.Request) {
 		writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, user)
+	writeJSON(w, http.StatusOK, toUserResponse(user))
 }
 
 func (a *API) transfer(w http.ResponseWriter, r *http.Request) {

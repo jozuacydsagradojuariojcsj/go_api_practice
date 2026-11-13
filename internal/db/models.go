@@ -5,8 +5,9 @@
 package db
 
 import (
+	"time"
+
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Transaction struct {
@@ -14,7 +15,7 @@ type Transaction struct {
 	FromUserID uuid.NullUUID
 	ToUserID   uuid.NullUUID
 	Amount     int64
-	CreatedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
 }
 
 type User struct {
@@ -22,6 +23,6 @@ type User struct {
 	Name         string
 	Email        string
 	Balance      int64
-	CreatedAt    pgtype.Timestamptz
+	CreatedAt    time.Time
 	PasswordHash *string
 }
