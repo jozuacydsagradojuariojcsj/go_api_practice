@@ -18,10 +18,7 @@ type transferRequest struct {
 }
 
 func (a *API) deposit(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathUUID(w, r, "id")
-	if !ok {
-		return
-	}
+	id := currentUserID(r)
 
 	var req depositRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -42,13 +39,15 @@ func (a *API) deposit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) transfer(w http.ResponseWriter, r *http.Request) {
+	from := currentUserID(r)
+
 	var req transferRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON Body")
 		return
 	}
 
-	if err := a.store.Transfer(r.Context(), req.From, req.To, req.Amount); err != nil {
+	if err := a.store.Transfer(r.Context(), from, req.To, req.Amount); err != nil {
 		writeStoreError(w, err)
 		return
 	}
@@ -56,10 +55,7 @@ func (a *API) transfer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) listUserTransaction(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathUUID(w, r, "id")
-	if !ok {
-		return
-	}
+	id := currentUserID(r)
 
 	txs, err := a.store.ListUserTransaction(r.Context(), id)
 	if err != nil {

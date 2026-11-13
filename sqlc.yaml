@@ -14,3 +14,8 @@ sql:
           - db_type: "uuid"
             nullable: true
             go_type: "github.com/google/uuid.NullUUID"
+          - db_type: "text"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true

@@ -36,8 +36,9 @@ func main() {
  \ \_____\  \ \_____\     \ \_\ \_\  \ \_\    \ \_\ 
   \/_____/   \/_____/      \/_/\/_/   \/_/     \/_/ `)
 
+	secret := os.Getenv("JWT_SECRET")
 	s := store.New(pool)
-	a := api.New(s)
+	a := api.New(s, []byte(secret))
 
 	addr := ":" + getenv("PORT", "8080")
 	srv := &http.Server{

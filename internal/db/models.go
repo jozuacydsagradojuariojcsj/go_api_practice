@@ -18,9 +18,10 @@ type Transaction struct {
 }
 
 type User struct {
-	ID        uuid.UUID
-	Name      string
-	Email     string
-	Balance   int64
-	CreatedAt pgtype.Timestamptz
+	ID           uuid.UUID
+	Name         string
+	Email        string
+	Balance      int64
+	CreatedAt    pgtype.Timestamptz
+	PasswordHash *string
 }

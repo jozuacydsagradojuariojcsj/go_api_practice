@@ -15,7 +15,7 @@ const addBalance = `-- name: AddBalance :one
 UPDATE users
 SET balance = balance + $1
 WHERE id = $2
-RETURNING id, name, email, balance, created_at
+RETURNING id, name, email, balance, created_at, password_hash
 `
 
 type AddBalanceParams struct {
@@ -32,23 +32,25 @@ func (q *Queries) AddBalance(ctx context.Context, arg AddBalanceParams) (User, e
 		&i.Email,
 		&i.Balance,
 		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (name, email)
-VALUES ($1, $2)
-RETURNING id, name, email, balance, created_at
+INSERT INTO users (name, email, password_hash)
+VALUES ($1, $2, $3)
+RETURNING id, name, email, balance, created_at, password_hash
 `
 
 type CreateUserParams struct {
-	Name  string
-	Email string
+	Name         string
+	Email        string
+	PasswordHash *string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Name, arg.Email)
+	row := q.db.QueryRow(ctx, createUser, arg.Name, arg.Email, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -56,6 +58,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.Balance,
 		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
@@ -73,7 +76,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, email, balance, created_at FROM users WHERE id = $1
+SELECT id, name, email, balance, created_at, password_hash FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -85,6 +88,25 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.Email,
 		&i.Balance,
 		&i.CreatedAt,
+		&i.PasswordHash,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, name, email, balance, created_at, password_hash FROM users WHERE email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Balance,
+		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }
@@ -123,7 +145,7 @@ func (q *Queries) ListUserTransaction(ctx context.Context, userID uuid.UUID) ([]
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, email, balance, created_at FROM users ORDER BY created_at
+SELECT id, name, email, balance, created_at, password_hash FROM users ORDER BY created_at
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -141,6 +163,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Email,
 			&i.Balance,
 			&i.CreatedAt,
+			&i.PasswordHash,
 		); err != nil {
 			return nil, err
 		}
@@ -209,21 +232,41 @@ func (q *Queries) RecordTransaction(ctx context.Context, arg RecordTransactionPa
 	return i, err
 }
 
+const setPassword = `-- name: SetPassword :exec
+UPDATE users SET password_hash = $1 WHERE id = $2
+`
+
+type SetPasswordParams struct {
+	PasswordHash *string
+	ID           uuid.UUID
+}
+
+func (q *Queries) SetPassword(ctx context.Context, arg SetPasswordParams) error {
+	_, err := q.db.Exec(ctx, setPassword, arg.PasswordHash, arg.ID)
+	return err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users 
-SET name = $1, email = $2
-WHERE id = $3
-RETURNING id, name, email, balance, created_at
+SET name = $1, email = $2, password_hash = COALESCE($3, password_hash)
+WHERE id = $4
+RETURNING id, name, email, balance, created_at, password_hash
 `
 
 type UpdateUserParams struct {
-	Name  string
-	Email string
-	ID    uuid.UUID
+	Name         string
+	Email        string
+	PasswordHash *string
+	ID           uuid.UUID
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateUser, arg.Name, arg.Email, arg.ID)
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.Name,
+		arg.Email,
+		arg.PasswordHash,
+		arg.ID,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -231,6 +274,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Email,
 		&i.Balance,
 		&i.CreatedAt,
+		&i.PasswordHash,
 	)
 	return i, err
 }

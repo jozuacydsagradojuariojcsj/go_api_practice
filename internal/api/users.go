@@ -7,16 +7,19 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jozuacydsagradojuariojcsj/go_api_practice/internal/db"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type createUserRequest struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type userUpdateRequest struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (a *API) createUser(w http.ResponseWriter, r *http.Request) {
@@ -32,10 +35,22 @@ func (a *API) createUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name and email are required")
 		return
 	}
+	if len(req.Password) < 8 || len(req.Password) > 72 {
+		writeError(w, http.StatusBadRequest, "password must be 8 to 72 characters")
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not create user")
+		return
+	}
+
+	hashStr := string(hash)
 
 	user, err := a.store.CreateUser(r.Context(), db.CreateUserParams{
-		Name:  req.Name,
-		Email: req.Email,
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: &hashStr,
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -50,10 +65,7 @@ func (a *API) createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) getUser(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathUUID(w, r, "id")
-	if !ok {
-		return
-	}
+	id := currentUserID(r)
 
 	user, err := a.store.GetUser(r.Context(), id)
 	if err != nil {
@@ -77,10 +89,7 @@ func (a *API) listUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) updateUser(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathUUID(w, r, "id")
-	if !ok {
-		return
-	}
+	id := currentUserID(r)
 
 	var req userUpdateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -95,10 +104,27 @@ func (a *API) updateUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "username or email required")
 		return
 	}
+
+	var hashPtr *string
+	if req.Password != "" {
+		if len(req.Password) < 8 || len(req.Password) > 72 {
+			writeError(w, http.StatusBadRequest, "password must be between 8 to 72 characters")
+			return
+		}
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not update user")
+	}
+
+	h := string(hash)
+	hashPtr = &h
+
 	user, err := a.store.UpdateUser(r.Context(), db.UpdateUserParams{
-		ID:    id,
-		Name:  req.Name,
-		Email: req.Email,
+		ID:           id,
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: hashPtr,
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -113,10 +139,7 @@ func (a *API) updateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) deleteUser(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathUUID(w, r, "id")
-	if !ok {
-		return
-	}
+	id := currentUserID(r)
 	n, err := a.store.DeleteUser(r.Context(), id)
 	if err != nil {
 		var pgErr *pgconn.PgError
